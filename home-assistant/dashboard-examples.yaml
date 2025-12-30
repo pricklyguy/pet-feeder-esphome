@@ -1,0 +1,366 @@
+###############################################################################
+# Pet Feeder Dashboard Examples
+###############################################################################
+# 
+# These dashboard cards provide a mobile-friendly interface for your pet feeder.
+# 
+# Requirements:
+#   - HACS: Mushroom Cards (https://github.com/piitaya/lovelace-mushroom)
+#   - HACS: Card Mod (https://github.com/thomasloven/lovelace-card-mod)
+#
+# Installation:
+#   1. Install required HACS components
+#   2. Go to your dashboard → Edit → Add Card → Manual Card
+#   3. Copy and paste one of the examples below
+#   4. Customize colors and icons to your preference
+#
+###############################################################################
+
+# ============================================================================
+# EXAMPLE 1: Full Mobile Dashboard (Neon Orange Theme)
+# ============================================================================
+# Features:
+#   - 4 scheduled feeding slots with enable toggles
+#   - Active slots glow orange
+#   - 4 manual feed buttons (1, 2, 3, 5 portions)
+#   - Daily portion counter
+#   - Responsive mobile layout
+
+type: custom:masonry-layout
+path: pet-feeder-mobile
+title: Pet Feeder Mobile
+cards:
+  - type: vertical-stack
+    cards:
+      - type: custom:mod-card
+        card_mod:
+          style: |
+            ha-card {
+              /* Orange/gold styling for the main card */
+              background: radial-gradient(circle at 50% 0%, rgba(255, 140, 0, 0.3), rgba(0,0,0,0.25));
+              border: 3px solid rgba(255, 140, 0, 0.8);
+              border-radius: 20px;
+              box-shadow:
+                0 0 12px rgba(255, 140, 0, 0.9),
+                inset 0 0 20px rgba(255, 140, 0, 0.1);
+              padding: 20px;
+              max-width: 1100px;
+              margin: auto;
+            }
+            /* Tighter padding specifically for mobile phones */
+            @media (max-width: 600px) {
+              ha-card {
+                padding: 10px;
+              }
+            }
+        card:
+          type: vertical-stack
+          cards:
+            - type: custom:mushroom-title-card
+              title: 🐾 Pet Feeder Schedule
+              subtitle: Set feed times and portions
+            - type: vertical-stack
+              cards:
+                - type: custom:mod-card
+                  card_mod:
+                    style: |
+                      ha-card {
+                        {% if is_state('input_boolean.pet_feed_slot1_enabled', 'on') %}
+                          border: 2px solid rgba(255, 140, 0, 0.8);
+                          box-shadow: 0 0 8px rgba(255, 140, 0, 0.8), 0 0 5px rgba(0,0,0,0.5);
+                        {% else %}
+                          border: 1px solid var(--divider-color); 
+                          box-shadow: none;
+                        {% endif %}
+                        border-radius: 12px;
+                      }
+                  card:
+                    type: entities
+                    title: Slot 1
+                    entities:
+                      - entity: input_boolean.pet_feed_slot1_enabled
+                        name: Enabled
+                      - entity: input_datetime.pet_feed_slot1_time
+                        name: Time
+                      - entity: input_number.pet_feed_slot1_portions
+                        name: Portions
+                - type: custom:mod-card
+                  card_mod:
+                    style: |
+                      ha-card {
+                        {% if is_state('input_boolean.pet_feed_slot2_enabled', 'on') %}
+                          border: 2px solid rgba(255, 140, 0, 0.8);
+                          box-shadow: 0 0 8px rgba(255, 140, 0, 0.8), 0 0 5px rgba(0,0,0,0.5);
+                        {% else %}
+                          border: 1px solid var(--divider-color);
+                          box-shadow: none;
+                        {% endif %}
+                        border-radius: 12px;
+                      }
+                  card:
+                    type: entities
+                    title: Slot 2
+                    entities:
+                      - entity: input_boolean.pet_feed_slot2_enabled
+                        name: Enabled
+                      - entity: input_datetime.pet_feed_slot2_time
+                        name: Time
+                      - entity: input_number.pet_feed_slot2_portions
+                        name: Portions
+                - type: custom:mod-card
+                  card_mod:
+                    style: |
+                      ha-card {
+                        {% if is_state('input_boolean.pet_feed_slot3_enabled', 'on') %}
+                          border: 2px solid rgba(255, 140, 0, 0.8);
+                          box-shadow: 0 0 8px rgba(255, 140, 0, 0.8), 0 0 5px rgba(0,0,0,0.5);
+                        {% else %}
+                          border: 1px solid var(--divider-color);
+                          box-shadow: none;
+                        {% endif %}
+                        border-radius: 12px;
+                      }
+                  card:
+                    type: entities
+                    title: Slot 3
+                    entities:
+                      - entity: input_boolean.pet_feed_slot3_enabled
+                        name: Enabled
+                      - entity: input_datetime.pet_feed_slot3_time
+                        name: Time
+                      - entity: input_number.pet_feed_slot3_portions
+                        name: Portions
+                - type: custom:mod-card
+                  card_mod:
+                    style: |
+                      ha-card {
+                        {% if is_state('input_boolean.pet_feed_slot4_enabled', 'on') %}
+                          border: 2px solid rgba(255, 140, 0, 0.8);
+                          box-shadow: 0 0 8px rgba(255, 140, 0, 0.8), 0 0 5px rgba(0,0,0,0.5);
+                        {% else %}
+                          border: 1px solid var(--divider-color);
+                          box-shadow: none;
+                        {% endif %}
+                        border-radius: 12px;
+                      }
+                  card:
+                    type: entities
+                    title: Slot 4
+                    entities:
+                      - entity: input_boolean.pet_feed_slot4_enabled
+                        name: Enabled
+                      - entity: input_datetime.pet_feed_slot4_time
+                        name: Time
+                      - entity: input_number.pet_feed_slot4_portions
+                        name: Portions
+            - type: custom:mushroom-title-card
+              title: 🎮 Manual Control
+              subtitle: Run a feed immediately
+            - type: grid
+              square: false
+              columns: 4
+              cards:
+                - type: custom:mushroom-template-card
+                  icon: mdi:hand-extended
+                  primary: Manual (1)
+                  tap_action:
+                    action: call-service
+                    service: script.pet_manual_feed_1
+                  card_mod:
+                    style: |
+                      ha-card {
+                        background: radial-gradient(circle at top, rgba(0,255,255,0.15), rgba(0,0,0,0.6));
+                        border: 2px solid rgba(0,255,255,0.4);
+                        box-shadow: 0 0 5px rgba(0,255,255,0.6);
+                        border-radius: 16px;
+                        transition: all 0.3s ease-in-out;
+                      }
+                      ha-card:active {
+                        box-shadow: 0 0 25px rgba(0,255,255,1);
+                        transform: scale(0.98);
+                      }
+                - type: custom:mushroom-template-card
+                  icon: mdi:dog
+                  primary: Snack (2)
+                  tap_action:
+                    action: call-service
+                    service: script.pet_manual_feed_2
+                  card_mod:
+                    style: |
+                      ha-card {
+                        background: radial-gradient(circle at top, rgba(255,165,0,0.15), rgba(0,0,0,0.6));
+                        border: 2px solid rgba(255,165,0,0.4);
+                        box-shadow: 0 0 5px rgba(255,165,0,0.6);
+                        border-radius: 16px;
+                        transition: all 0.3s ease-in-out;
+                      }
+                      ha-card:active {
+                        box-shadow: 0 0 25px rgba(255,165,0,1);
+                        transform: scale(0.98);
+                      }
+                - type: custom:mushroom-template-card
+                  icon: mdi:food-drumstick
+                  primary: Meal (3)
+                  tap_action:
+                    action: call-service
+                    service: script.pet_manual_feed_3
+                  card_mod:
+                    style: |
+                      ha-card {
+                        background: radial-gradient(circle at top, rgba(50,205,50,0.15), rgba(0,0,0,0.6));
+                        border: 2px solid rgba(50,205,50,0.4);
+                        box-shadow: 0 0 5px rgba(50,205,50,0.6);
+                        border-radius: 16px;
+                        transition: all 0.3s ease-in-out;
+                      }
+                      ha-card:active {
+                        box-shadow: 0 0 25px rgba(50,205,50,1);
+                        transform: scale(0.98);
+                      }
+                - type: custom:mushroom-template-card
+                  icon: mdi:silverware-fork-knife
+                  primary: Large (5)
+                  tap_action:
+                    action: call-service
+                    service: script.pet_manual_feed_5
+                  card_mod:
+                    style: |
+                      ha-card {
+                        background: radial-gradient(circle at top, rgba(255,69,0,0.15), rgba(0,0,0,0.6));
+                        border: 2px solid rgba(255,69,0,0.4);
+                        box-shadow: 0 0 5px rgba(255,69,0,0.6);
+                        border-radius: 16px;
+                        transition: all 0.3s ease-in-out;
+                      }
+                      ha-card:active {
+                        box-shadow: 0 0 25px rgba(255,69,0,1);
+                        transform: scale(0.98);
+                      }
+            - type: custom:mushroom-entity-card
+              entity: input_number.pet_feed_portions_today
+              name: Total Portions Dispensed Today
+              icon: mdi:counter
+              icon_color: deep-orange
+              card_mod:
+                style: |
+                  ha-card {
+                    box-shadow: 0 0 5px rgba(255,140,0,0.5);
+                    border: 1px solid rgba(255,140,0,0.5);
+                    border-radius: 12px;
+                  }
+
+# ============================================================================
+# EXAMPLE 2: Simple Schedule Card (No Manual Buttons)
+# ============================================================================
+# Minimal card showing just the 4 feeding slots
+
+type: entities
+title: 🐾 Pet Feeder Schedule
+entities:
+  - type: section
+    label: Slot 1
+  - entity: input_boolean.pet_feed_slot1_enabled
+    name: Enabled
+  - entity: input_datetime.pet_feed_slot1_time
+    name: Time
+  - entity: input_number.pet_feed_slot1_portions
+    name: Portions
+  - type: section
+    label: Slot 2
+  - entity: input_boolean.pet_feed_slot2_enabled
+    name: Enabled
+  - entity: input_datetime.pet_feed_slot2_time
+    name: Time
+  - entity: input_number.pet_feed_slot2_portions
+    name: Portions
+  - type: section
+    label: Slot 3
+  - entity: input_boolean.pet_feed_slot3_enabled
+    name: Enabled
+  - entity: input_datetime.pet_feed_slot3_time
+    name: Time
+  - entity: input_number.pet_feed_slot3_portions
+    name: Portions
+  - type: section
+    label: Slot 4
+  - entity: input_boolean.pet_feed_slot4_enabled
+    name: Enabled
+  - entity: input_datetime.pet_feed_slot4_time
+    name: Time
+  - entity: input_number.pet_feed_slot4_portions
+    name: Portions
+
+# ============================================================================
+# EXAMPLE 3: Quick Feed Buttons Only
+# ============================================================================
+# Just the manual feed buttons in a horizontal grid
+
+type: grid
+columns: 4
+square: false
+cards:
+  - type: button
+    name: Feed 1
+    icon: mdi:hand-extended
+    tap_action:
+      action: call-service
+      service: script.pet_manual_feed_1
+  - type: button
+    name: Feed 2
+    icon: mdi:dog
+    tap_action:
+      action: call-service
+      service: script.pet_manual_feed_2
+  - type: button
+    name: Feed 3
+    icon: mdi:food-drumstick
+    tap_action:
+      action: call-service
+      service: script.pet_manual_feed_3
+  - type: button
+    name: Feed 5
+    icon: mdi:silverware-fork-knife
+    tap_action:
+      action: call-service
+      service: script.pet_manual_feed_5
+
+# ============================================================================
+# EXAMPLE 4: Statistics Card
+# ============================================================================
+# Display feeding statistics and device status
+
+type: entities
+title: 🐾 Pet Feeder Stats
+entities:
+  - entity: input_number.pet_feed_portions_today
+    name: Portions Today
+    icon: mdi:counter
+  - entity: sensor.petfeeder_total_portions_dispensed
+    name: Total Lifetime Portions
+  - entity: sensor.petfeeder_feed_pulse_total
+    name: Current Pulse Rate
+  - entity: button.petfeeder_execute_feed_action
+    name: Manual Feed Button
+  - entity: number.petfeeder_ha_target_pulses
+    name: Portion Size Setting
+
+# ============================================================================
+# Customization Tips
+# ============================================================================
+#
+# Color Themes:
+#   Blue (Cat):     rgba(30, 144, 255, X)   - Use for cat feeders
+#   Orange (Dog):   rgba(255, 140, 0, X)    - Use for dog feeders  
+#   Green:          rgba(50, 205, 50, X)    - Alternative theme
+#   Purple:         rgba(138, 43, 226, X)   - Alternative theme
+#
+# Icon Options:
+#   mdi:dog, mdi:cat, mdi:paw, mdi:food-drumstick, mdi:bowl,
+#   mdi:silverware-fork-knife, mdi:hand-extended, mdi:timer
+#
+# Button Grid Layouts:
+#   columns: 2  - 2 buttons per row (good for tablets)
+#   columns: 3  - 3 buttons per row (balanced)
+#   columns: 4  - 4 buttons per row (compact, good for mobile)
+#
+###############################################################################
