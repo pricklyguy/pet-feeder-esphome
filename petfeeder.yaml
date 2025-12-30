@@ -1,0 +1,177 @@
+esphome:
+  name: petfeeder
+  friendly_name: Pet Feeder
+  comment: "ESP32 feeder motor control with pulse-based portions"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+logger:
+
+api:
+  password: "" 
+
+ota:
+  - platform: esphome
+    password: ""
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "Pet Feeder"
+    password: ""
+
+web_server:
+  port: 80
+
+# ────────────────────────────────
+# RELAYS (motor control)
+# ────────────────────────────────
+switch:
+  - platform: gpio
+    id: relay_motor_pos
+    pin:
+      number: GPIO32
+      mode: OUTPUT
+    inverted: false
+    restore_mode: ALWAYS_OFF
+    internal: true
+
+# ────────────────────────────────
+# BUZZER OUTPUT
+# ────────────────────────────────
+output:
+  - platform: ledc
+    id: buzzer_output
+    pin: GPIO13
+
+rtttl:
+  output: buzzer_output
+  id: my_rtttl
+
+
+# ────────────────────────────────
+# PULSE COUNTER - NO CAP, INTERNAL PULLUP
+# ────────────────────────────────
+sensor:
+  - platform: pulse_counter
+    id: feed_pulse_sensor
+    name: "Feed Pulse Total"
+    pin:
+      number: GPIO19
+      mode:
+        input: true
+        pullup: true
+      inverted: true
+    count_mode:
+      rising_edge: DISABLE
+      falling_edge: INCREMENT
+    use_pcnt: true
+    internal_filter: 10us
+    filters:
+      - debounce: 900ms  # Increased from 400ms
+    update_interval: 1s
+    total:
+      name: "Total Portions Dispensed"
+      id: feed_pulse_total
+      unit_of_measurement: "portions"
+
+# ────────────────────────────────
+# PHYSICAL BUTTON
+# ────────────────────────────────
+binary_sensor:
+  - platform: gpio
+    id: btn_feed_now
+    pin:
+      number: GPIO25
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      - delayed_on: 50ms
+    on_press:
+      - script.execute: dispense_script
+    name: "Manual Feed Button"
+
+# ────────────────────────────────
+# GLOBALS & HA NUMBER SYNCHRONIZATION
+# ────────────────────────────────
+globals:
+  - id: feed_pulse_start
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+number:
+  - platform: template
+    name: "HA Target Pulses"
+    id: ha_target_pulses
+    mode: box
+    min_value: 0
+    max_value: 10
+    step: 1
+    set_action:
+      lambda: 'id(ha_target_pulses).publish_state(x);'
+
+# ────────────────────────────────
+# SCRIPTS
+# ────────────────────────────────
+script:
+  - id: motor_on
+    then:
+      - switch.turn_on: relay_motor_pos
+     
+  - id: motor_off
+    then:
+      - switch.turn_off: relay_motor_pos
+
+  # Short beep
+  - id: beep_short
+    then:
+      - rtttl.play: "beep:d=4,o=5,b=100:16c6"
+      
+  # Double beep when complete  
+  - id: beep_complete
+    then:
+      # Shorter version - just the iconic opening
+      - rtttl.play: "StarWars:d=8,o=6,b=180:f5,f5,f5,2a#5.,2f.,d#,d,c,2a#.,4f.,d#,d,c,2a#.,4f.,d#,d,d#,2c"
+
+  - id: dispense_script
+    mode: restart
+    then:
+      - script.execute: beep_short
+      
+      - lambda: |-
+          int target_pulses = (int) id(ha_target_pulses).state;
+          id(feed_pulse_start) = id(feed_pulse_total).state;
+          ESP_LOGD("feeder", "Starting feed for %d pulses.", target_pulses);
+      
+      - script.execute: motor_on
+      
+      - wait_until:
+          condition:
+            lambda: |-
+              int target_pulses = (int) id(ha_target_pulses).state;
+              return (id(feed_pulse_total).state - id(feed_pulse_start)) >= target_pulses;
+          timeout: 14s
+          
+      - script.execute: motor_off
+      
+      - script.execute: beep_complete
+
+      - homeassistant.service:
+          service: script.pet_feeder_increment_daily_count
+          data: {}
+
+# ────────────────────────────────
+# BUTTONS
+# ────────────────────────────────
+button:
+  - platform: template
+    name: "Execute Feed Action"
+    id: execute_feed_action
+    icon: mdi:food-drumstick-outline
+    on_press:
+      - script.execute: dispense_script
+
