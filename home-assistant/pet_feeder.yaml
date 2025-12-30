@@ -1,0 +1,257 @@
+###############################################################################
+# 🐾  Pet Feeder Package – 4-slot schedule + dashboard helpers
+###############################################################################
+
+# ────────────────
+#  INPUT HELPERS
+# ────────────────
+input_boolean:
+  pet_feed_slot1_enabled:
+    name: Pet Feeder Slot 1 Enabled
+    icon: mdi:dog
+  pet_feed_slot2_enabled:
+    name: Pet Feeder Slot 2 Enabled
+    icon: mdi:dog
+  pet_feed_slot3_enabled:
+    name: Pet Feeder Slot 3 Enabled
+    icon: mdi:dog
+  pet_feed_slot4_enabled:
+    name: Pet Feeder Slot 4 Enabled
+    icon: mdi:dog
+
+input_datetime:
+  pet_feed_slot1_time:
+    name: Pet Feeder Slot 1 Time
+    has_time: true
+  pet_feed_slot2_time:
+    name: Pet Feeder Slot 2 Time
+    has_time: true
+  pet_feed_slot3_time:
+    name: Pet Feeder Slot 3 Time
+    has_time: true
+  pet_feed_slot4_time:
+    name: Pet Feeder Slot 4 Time
+    has_time: true
+
+input_number:
+  pet_feed_slot1_portions:
+    name: Pet Feeder Slot 1 Portions
+    min: 1
+    max: 10
+    step: 1
+    icon: mdi:bowl
+  pet_feed_slot2_portions:
+    name: Pet Feeder Slot 2 Portions
+    min: 1
+    max: 10
+    step: 1
+    icon: mdi:bowl
+  pet_feed_slot3_portions:
+    name: Pet Feeder Slot 3 Portions
+    min: 1
+    max: 10
+    step: 1
+    icon: mdi:bowl
+  pet_feed_slot4_portions:
+    name: Pet Feeder Slot 4 Portions
+    min: 1
+    max: 10
+    step: 1
+    icon: mdi:bowl
+
+  pet_feed_portions_today:
+    name: Pet Feeder Portions Dispensed Today
+    min: 0
+    max: 200
+    step: 1
+    mode: box
+    icon: mdi:counter
+
+  pet_feed_pulse_last_total:
+    name: Pet Feeder Last Pulse Total
+    min: 0
+    max: 100000
+    step: 1
+    mode: box
+    icon: mdi:gauge
+
+# ────────────────
+#  AUTOMATIONS
+# ────────────────
+automation:
+  - id: "pet_feeder_slot1"
+    alias: "🐾 Pet Feeder Slot 1"
+    trigger:
+      - trigger: time
+        at: input_datetime.pet_feed_slot1_time
+    condition:
+      - condition: state
+        entity_id: input_boolean.pet_feed_slot1_enabled
+        state: "on"
+    action:
+      # Step 1: Write the desired portion size to the ESP32's Number entity
+      - action: number.set_value
+        target:
+          entity_id: number.petfeeder_ha_target_pulses
+        data:
+          value: "{{ states('input_number.pet_feed_slot1_portions') | int }}"
+
+      # Step 2: Press the ESP32's button to execute the dispense script
+      - action: button.press
+        target:
+          entity_id: button.petfeeder_execute_feed_action
+
+  - id: "pet_feeder_slot2"
+    alias: "🐾 Pet Feeder Slot 2"
+    trigger:
+      - trigger: time
+        at: input_datetime.pet_feed_slot2_time
+    condition:
+      - condition: state
+        entity_id: input_boolean.pet_feed_slot2_enabled
+        state: "on"
+    action:
+      - action: number.set_value
+        target:
+          entity_id: number.petfeeder_ha_target_pulses
+        data:
+          value: "{{ states('input_number.pet_feed_slot2_portions') | int }}"
+      - action: button.press
+        target:
+          entity_id: button.petfeeder_execute_feed_action
+
+  - id: "pet_feeder_slot3"
+    alias: "🐾 Pet Feeder Slot 3"
+    trigger:
+      - trigger: time
+        at: input_datetime.pet_feed_slot3_time
+    condition:
+      - condition: state
+        entity_id: input_boolean.pet_feed_slot3_enabled
+        state: "on"
+    action:
+      - action: number.set_value
+        target:
+          entity_id: number.petfeeder_ha_target_pulses
+        data:
+          value: "{{ states('input_number.pet_feed_slot3_portions') | int }}"
+      - action: button.press
+        target:
+          entity_id: button.petfeeder_execute_feed_action
+
+  - id: "pet_feeder_slot4"
+    alias: "🐾 Pet Feeder Slot 4"
+    trigger:
+      - trigger: time
+        at: input_datetime.pet_feed_slot4_time
+    condition:
+      - condition: state
+        entity_id: input_boolean.pet_feed_slot4_enabled
+        state: "on"
+    action:
+      - action: number.set_value
+        target:
+          entity_id: number.petfeeder_ha_target_pulses
+        data:
+          value: "{{ states('input_number.pet_feed_slot4_portions') | int }}"
+      - action: button.press
+        target:
+          entity_id: button.petfeeder_execute_feed_action
+
+  - id: "pet_feeder_reset_daily_portions"
+    alias: "🐾 Pet Feeder Reset Daily Portions"
+    description: "Resets the portion counter at midnight."
+    trigger:
+      - trigger: time
+        at: "00:00:00"
+    action:
+      - action: input_number.set_value
+        target:
+          entity_id: input_number.pet_feed_portions_today
+        data:
+          value: 0
+    mode: single
+
+  - id: "pet_feeder_log_new_portions"
+    alias: Pet Feeder - Log New Portions
+    trigger:
+      - trigger: state
+        entity_id: sensor.petfeeder_total_portions_dispensed
+    action:
+      - variables:
+          portions_dispensed: "{{ (trigger.to_state.state | float(0) - trigger.from_state.state | float(0)) | round(0) }}"
+      - condition: template
+        value_template: "{{ portions_dispensed > 0 }}"
+      - action: input_number.set_value
+        data:
+          value: >
+            {% set current_value = states('input_number.pet_feed_portions_today') | float(0) %}
+            {{ current_value + portions_dispensed }}
+        target:
+          entity_id: input_number.pet_feed_portions_today
+    mode: single
+
+script:
+  pet_feeder_increment_daily_count:
+    alias: "Pet Feeder Increment Daily Count"
+    sequence:
+      - action: logbook.log
+        data:
+          name: "Pet Feeder"
+          message: "Dispensed food"
+
+  ###############################################################################
+  # MANUAL FEED PRESET SCRIPTS (HA-side)
+  ###############################################################################
+
+  pet_manual_feed_1:
+    alias: "Feed 1 Portion"
+    sequence:
+      - action: number.set_value
+        target:
+          entity_id: number.petfeeder_ha_target_pulses
+        data:
+          value: 1
+      - delay: "00:00:00.500"
+      - action: button.press
+        target:
+          entity_id: button.petfeeder_execute_feed_action
+
+  pet_manual_feed_2:
+    alias: "Feed Snack (2 Portions)"
+    sequence:
+      - action: number.set_value
+        target:
+          entity_id: number.petfeeder_ha_target_pulses
+        data:
+          value: 2
+      - delay: "00:00:00.500"
+      - action: button.press
+        target:
+          entity_id: button.petfeeder_execute_feed_action
+
+  pet_manual_feed_3:
+    alias: "Feed Meal (3 Portions)"
+    sequence:
+      - action: number.set_value
+        target:
+          entity_id: number.petfeeder_ha_target_pulses
+        data:
+          value: 3
+      - delay: "00:00:00.500"
+      - action: button.press
+        target:
+          entity_id: button.petfeeder_execute_feed_action
+
+  pet_manual_feed_5:
+    alias: "Feed Large Meal (5 Portions)"
+    sequence:
+      - action: number.set_value
+        target:
+          entity_id: number.petfeeder_ha_target_pulses
+        data:
+          value: 5
+      - delay: "00:00:00.500"
+      - action: button.press
+        target:
+          entity_id: button.petfeeder_execute_feed_action
