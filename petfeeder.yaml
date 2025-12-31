@@ -7,6 +7,7 @@ esp32:
   board: esp32dev
   framework:
     type: arduino
+
 logger:
 
 api:
@@ -17,8 +18,8 @@ ota:
     password: ""
 
 wifi:
-  ssid: "YourWiFiSSID"
-  password: "YourWiFiPassword"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
   ap:
     ssid: "Pet Feeder"
     password: ""
@@ -51,9 +52,8 @@ rtttl:
   output: buzzer_output
   id: my_rtttl
 
-
 # ────────────────────────────────
-# PULSE COUNTER - NO CAP, INTERNAL PULLUP
+# PULSE COUNTER
 # ────────────────────────────────
 sensor:
   - platform: pulse_counter
@@ -71,7 +71,7 @@ sensor:
     use_pcnt: true
     internal_filter: 10us
     filters:
-      - debounce: 900ms  # Increased from 400ms
+      - debounce: 900ms
     update_interval: 1s
     total:
       name: "Total Portions Dispensed"
@@ -115,6 +115,14 @@ number:
       lambda: 'id(ha_target_pulses).publish_state(x);'
 
 # ────────────────────────────────
+# TEXT SENSORS (for receiving tune selection from HA)
+# ────────────────────────────────
+text_sensor:
+  - platform: homeassistant
+    id: selected_tune
+    entity_id: input_select.pet_feeder_completion_tune
+    
+# ────────────────────────────────
 # SCRIPTS
 # ────────────────────────────────
 script:
@@ -126,16 +134,72 @@ script:
     then:
       - switch.turn_off: relay_motor_pos
 
-  # Short beep
+  # Short beep on start
   - id: beep_short
     then:
       - rtttl.play: "beep:d=4,o=5,b=100:16c6"
       
-  # Double beep when complete  
+  # Completion tune - plays selected tune from HA
   - id: beep_complete
     then:
-      # Shorter version - just the iconic opening
-      - rtttl.play: "StarWars:d=8,o=6,b=180:f5,f5,f5,2a#5.,2f.,d#,d,c,2a#.,4f.,d#,d,c,2a#.,4f.,d#,d,d#,2c"
+      - lambda: |-
+          std::string tune = id(selected_tune).state;
+          
+          if (tune == "Star Wars") {
+            id(my_rtttl).play("StarWars:d=8,o=6,b=180:f5,f5,f5,2a#5.,2f.,d#,d,c,2a#.,4f.,d#,d,c,2a#.,4f.,d#,d,d#,2c");
+          }
+          else if (tune == "Super Mario") {
+            id(my_rtttl).play("SuperMario:d=4,o=5,b=100:16e6,16e6,8p,16e6,8p,16c6,16e6,8p,16g6,8p,8p,8p,16g");
+          }
+          else if (tune == "Zelda") {
+            id(my_rtttl).play("Zelda:d=4,o=5,b=180:8g,8a,8b,8c6,8d6,8e6");
+          }
+          else if (tune == "Final Fantasy") {
+            id(my_rtttl).play("FF:d=4,o=5,b=140:8c,8c,8c,2c6,2g6,2e6,2g,8p,8p,8c,8c,8c,2c6,2g6,2e6,2g");
+          }
+          else if (tune == "Tetris") {
+            id(my_rtttl).play("Tetris:d=4,o=5,b=160:e6,8b,8c6,8d6,16e6,16d6,8c6,8b,a,8a,8c6,e6,8d6,8c6,b,8b,8c6,d6,e6,c6,a,2a");
+          }
+          else if (tune == "Indiana Jones") {
+            id(my_rtttl).play("Indiana:d=4,o=5,b=250:e,8p,8f,8g,8p,1c6,8p.,d,8p,8e,1f,p.,g,8p,8a,8b,8p,1f6,p,a,8p,8b,2c6,2d6,2e6,e,8p,8f,8g,8p,1c6,p,d6,8p,8e6,1f6,g,8p,8g,e6,8p,8d6,8p,8g,e6,8p,8d6,8p,8g,f6,8p,8e6,8p,8d6,2c6");
+          }
+          else if (tune == "Beethoven's 5th") {
+            id(my_rtttl).play("Beethoven5:d=8,o=5,b=160:8g,8g,8g,2d#,8p,8f,8f,8f,2d");
+          }
+          else if (tune == "Happy Birthday") {
+            id(my_rtttl).play("HappyBday:d=4,o=5,b=100:8g,8g,a,g,c6,2b,8g,8g,a,g,d6,2c6,8g,8g,g6,e6,c6,b,a,8f6,8f6,e6,c6,d6,2c6");
+          }
+          else if (tune == "Mission Impossible") {
+            id(my_rtttl).play("MissionImp:d=16,o=6,b=95:32d,32d#,32d,32d#,32d,32d#,32d,32d#,32d,32d,32d#,32e,32f,32f#,32g,g,8p,g,8p,a#,p,c7,p,g,8p,g,8p,f,p,f#,p,g");
+          }
+          else if (tune == "The Simpsons") {
+            id(my_rtttl).play("Simpsons:d=4,o=5,b=160:c6,e6,f#6,8a6,g6,e6,c6,8a,8f#,8f#,8f#,2g,8p,8p,8f#,8f#,8f#,8g,a#,8c6,8c6,8c6,c6");
+          }
+          else if (tune == "Take On Me") {
+            id(my_rtttl).play("TakeOnMe:d=4,o=4,b=160:8f#5,8f#5,8f#5,8d5,8p,8b,8p,8e5,8p,8e5,8p,8e5,8g#5,8g#5,8a5,8b5,8a5,8a5,8a5,8e5,8p,8d5,8p,8f#5,8p,8f#5,8p,8f#5,8e5,8e5,8f#5,8e5");
+          }
+          else if (tune == "Jeopardy") {
+            id(my_rtttl).play("Jeopardy:d=4,o=6,b=125:c,f,c,f5,c,f,2c,c,f,c,f,a.,8g,8f,8e,8d,8c#,c,f,c,f5,c,f,2c,f,8c,c5,8c,2c");
+          }
+          else if (tune == "Looney Tunes") {
+            id(my_rtttl).play("Looney:d=4,o=5,b=140:32p,c6,8f6,8e6,8d6,8c6,a.,8c6,8f6,8e6,8d6,8d#6,e.6,8e6,8e6,8c6,8d6,8c6,8e6,8c6,8d6,8a,8c6,8g,8a#,8a,8f");
+          }
+          else if (tune == "Pacman") {
+            id(my_rtttl).play("Pacman:d=4,o=5,b=112:32b,32p,32b6,32p,32f#6,32p,32d#6,32p,32b6,32f#6,16p,16d#6,16p,32c6,32p,32c7,32p,32g6,32p,32e6,32p,32c7,32g6,16p,16e6,16p,32b,32p,32b6,32p,32f#6,32p,32d#6,32p,32b6,32f#6,16p,16d#6,16p,32d#6,32e6,32f6,32p,32f6,32f#6,32g6,32p,32g6,32g#6,32a6,32p,32b6");
+          }
+          else if (tune == "Pink Panther") {
+            id(my_rtttl).play("PinkPanther:d=4,o=5,b=160:8d#,8e,2p,8f#,8g,2p,8d#,8e,16p,8f#,8g,16p,8c6,8b,16p,8d#,8e,16p,8b,2a#,2p,16a,16g,16e,16d,2e");
+          }
+          else if (tune == "Flintstones") {
+            id(my_rtttl).play("Flintstones:d=4,o=5,b=200:g#,c#,8p,c#6,8a#,g#,c#,8p,g#,8f#,8f,8f,8f#,8g#,c#,d#,2f,2p,g#,c#,8p,c#6,8a#,g#,c#,8p,g#,8f#,8f,8f,8f#,8g#,c#,d#,2c#");
+          }
+          else if (tune == "Double Beep") {
+            id(my_rtttl).play("complete:d=4,o=5,b=200:8c6,8p,8c6");
+          }
+          else {
+            // Default to Star Wars if unknown
+            id(my_rtttl).play("StarWars:d=8,o=6,b=180:f5,f5,f5,2a#5.,2f.,d#,d,c,2a#.,4f.,d#,d,c,2a#.,4f.,d#,d,d#,2c");
+          }
 
   - id: dispense_script
     mode: restart
@@ -174,4 +238,3 @@ button:
     icon: mdi:food-drumstick-outline
     on_press:
       - script.execute: dispense_script
-
