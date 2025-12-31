@@ -16,13 +16,13 @@ An automated pet feeder built with ESP32 and ESPHome, featuring pulse-based port
 
 ### Components
 - ESP32 Dev Board
-- Single relay module (3V) (can use a 5v just seperate logic from coils)
+- Single relay module (3V) (can use 5V, just separate logic from coils)
 - Microswitch (for portion counting)
 - Passive buzzer
 - 2N2222 NPN transistor
 - Tactile push button (manual feed)
 - 0.01µF (103) ceramic capacitor
-- 1N4007 diode
+- 1N4007 flyback diode
 - 1kΩ resistor
 - Pet feeder mechanism with motor
 
@@ -31,16 +31,17 @@ An automated pet feeder built with ESP32 and ESPHome, featuring pulse-based port
 ```
 Motor Control:
 ESP32 GPIO32 → Relay IN
-Vcc → 3.3V
-GND → Shared Ground
+Relay VCC → 3.3V
+Relay GND → Shared Ground
 
 Relay Side:
-Com: 5V +
-NO: Motor +
-Ground side of the motor ties to common shared ground.
-Put the 1N4007 diode across the motor terminals.
-Stripe (cathode) → Motor +
-Non-stripe (anode) → Motor – / GND
+COM → 5V +
+NO → Motor +
+Motor – → Shared Ground
+
+Flyback Diode (across motor terminals):
+1N4007 Stripe (cathode) → Motor +
+1N4007 Non-stripe (anode) → Motor – / GND
 
 Pulse Counter (with debounce):
 Microswitch → GPIO19
@@ -64,12 +65,12 @@ Buzzer (+) → 5V
 
 1. Copy `petfeeder.yaml` to your ESPHome config directory
 2. Create a `secrets.yaml` file with your WiFi credentials:
-   
+   ```yaml
    wifi_ssid: "YourWiFiSSID"
    wifi_password: "YourWiFiPassword"
    ```
 3. Flash the ESP32:
-   
+   ```bash
    esphome run petfeeder.yaml
    ```
 
