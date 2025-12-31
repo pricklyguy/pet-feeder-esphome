@@ -154,6 +154,13 @@ cards:
                       - entity: input_number.pet_feed_slot4_portions
                         name: Portions
             - type: custom:mushroom-title-card
+              title: 🎵 Completion Tune
+              subtitle: Choose your feeding completion sound
+            - type: entities
+              entities:
+                - entity: input_select.pet_feeder_completion_tune
+                  name: Select Tune
+            - type: custom:mushroom-title-card
               title: 🎮 Manual Control
               subtitle: Run a feed immediately
             - type: grid
