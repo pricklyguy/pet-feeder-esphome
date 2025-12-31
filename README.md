@@ -7,7 +7,7 @@ An automated pet feeder built with ESP32 and ESPHome, featuring pulse-based port
 - **Pulse-based portion control** - Accurate dispensing using microswitch feedback
 - **4 scheduled feeding times** - Fully configurable through Home Assistant
 - **Manual feed button** - Physical button on the device for instant feeding
-- **Star Wars audio feedback** - Short beep on start, Imperial March on completion
+- **Customizable audio feedback** - Choose from 17 completion tunes via dashboard
 - **Daily portion tracking** - Automatic reset at midnight
 - **Home Assistant integration** - Full automation and dashboard support
 - **Web interface** - Built-in web server for device management
@@ -128,17 +128,31 @@ number:
 
 ### Changing Audio Feedback
 
-#### Short Beep (on start):
+Choose from 17 different completion tunes via the dashboard dropdown:
+- Star Wars (default)
+- Super Mario
+- Zelda
+- Final Fantasy
+- Tetris
+- Indiana Jones
+- Beethoven's 5th
+- Happy Birthday
+- Mission Impossible
+- The Simpsons
+- Take On Me
+- Jeopardy
+- Looney Tunes
+- Pacman
+- Pink Panther
+- Flintstones
+- Double Beep (simple/quiet)
+
+No need to reflash the ESP32 - just select your preferred tune in Home Assistant!
+
+#### Customizing the Start Beep:
 ```yaml
 - rtttl.play: "beep:d=4,o=5,b=100:16c6"
 ```
-
-#### Star Wars Theme (on complete):
-```yaml
-- rtttl.play: "StarWars:d=8,o=6,b=180:f5,f5,f5,2a#5.,2f.,d#,d,c,2a#.,4f.,d#,d,c,2a#.,4f.,d#,d,d#,2c"
-```
-
-Replace with any [RTTTL string](http://esphome.io/components/rtttl.html) you prefer.
 
 ### Fine-tuning Pulse Counting
 
@@ -194,6 +208,7 @@ Multiple dashboard examples are provided in [`home-assistant/dashboard-examples.
 ### Example 1: Full Mobile Dashboard (Neon Theme)
 Beautiful mobile-optimized interface with:
 - Glowing neon effects on enabled slots
+- Tune selector dropdown (17 options)
 - Color-coded manual feed buttons
 - Responsive layout
 - Touch-optimized controls
