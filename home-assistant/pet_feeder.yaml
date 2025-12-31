@@ -5,6 +5,30 @@
 # ────────────────
 #  INPUT HELPERS
 # ────────────────
+input_select:
+  pet_feeder_completion_tune:
+    name: Completion Tune
+    options:
+      - Star Wars
+      - Super Mario
+      - Zelda
+      - Final Fantasy
+      - Tetris
+      - Indiana Jones
+      - Beethoven's 5th
+      - Happy Birthday
+      - Mission Impossible
+      - The Simpsons
+      - Take On Me
+      - Jeopardy
+      - Looney Tunes
+      - Pacman
+      - Pink Panther
+      - Flintstones
+      - Double Beep
+    initial: Star Wars
+    icon: mdi:music-note
+
 input_boolean:
   pet_feed_slot1_enabled:
     name: Pet Feeder Slot 1 Enabled
