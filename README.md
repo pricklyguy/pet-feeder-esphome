@@ -125,7 +125,15 @@ number:
     min_value: 0
     max_value: 10  # Adjust this value
 ```
-
+> [!IMPORTANT]
+> **Critical Sync Check:** After flashing the ESP32, restart Home Assistant and **verify** that your entity IDs match exactly. If they do not match, the schedule will **NOT** work.
+> 
+> Check your ESPHome YAML against your HA package file. The most common issues involve these three entities:
+> - `sensor.pet_feeder_total_portions_dispensed`
+> - `number.pet_feeder_ha_target_pulses_pet`
+> - `button.pet_feeder_execute_feed_action`
+>
+> **Note:** If you see names like `sensor.pet_feeder_total_portions_dispensed_2`, you must update your package file to match or rename the entity in HA Settings to remove the `_2`.
 ### Changing Audio Feedback
 
 Choose from 17 different completion tunes via the dashboard dropdown:
