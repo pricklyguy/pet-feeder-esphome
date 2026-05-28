@@ -1,0 +1,225 @@
+# ─────────────────────────────────────────────────────────────────
+#  Pet Feeder V3 (ESP32-C6) Dashboard Example
+#  Replace "twix_feeder" with your device_name throughout
+#  Requires: mushroom, card-mod (HACS)
+# ─────────────────────────────────────────────────────────────────
+type: custom:mod-card
+card_mod:
+  style: |
+    ha-card {
+      background: radial-gradient(circle at 50% 0%, rgba(30, 144, 255, 0.3), rgba(0,0,0,0.25));
+      border: 3px solid rgba(30, 144, 255, 0.8);
+      border-radius: 20px;
+      box-shadow:
+        0 0 12px rgba(30, 144, 255, 0.9),
+        inset 0 0 20px rgba(30, 144, 255, 0.1);
+      padding: 20px;
+      max-width: 1100px;
+      margin: auto;
+    }
+    @media (max-width: 600px) {
+      ha-card { padding: 10px; }
+    }
+card:
+  type: vertical-stack
+  cards:
+    - type: custom:mushroom-title-card
+      title: 🐱 Twix Feeder Schedule
+      subtitle: Set feed times and portions
+
+    - type: custom:mod-card
+      card_mod:
+        style: |
+          ha-card {
+            {% if is_state('switch.twix_feeder_schedule_slot_1_enabled', 'on') %}
+              border: 2px solid rgba(30, 144, 255, 0.8);
+              box-shadow: 0 0 8px rgba(30, 144, 255, 0.8), 0 0 5px rgba(0,0,0,0.5);
+            {% else %}
+              border: 1px solid var(--divider-color);
+              box-shadow: none;
+            {% endif %}
+            border-radius: 12px;
+          }
+      card:
+        type: entities
+        title: Slot 1
+        entities:
+          - entity: switch.twix_feeder_schedule_slot_1_enabled
+            name: Enabled
+          - entity: number.twix_feeder_slot_1_hour
+            name: Hour
+          - entity: number.twix_feeder_slot_1_minute
+            name: Minute
+          - entity: number.twix_feeder_slot_1_portions
+            name: Portions
+
+    - type: custom:mod-card
+      card_mod:
+        style: |
+          ha-card {
+            {% if is_state('switch.twix_feeder_schedule_slot_2_enabled', 'on') %}
+              border: 2px solid rgba(30, 144, 255, 0.8);
+              box-shadow: 0 0 8px rgba(30, 144, 255, 0.8), 0 0 5px rgba(0,0,0,0.5);
+            {% else %}
+              border: 1px solid var(--divider-color);
+              box-shadow: none;
+            {% endif %}
+            border-radius: 12px;
+          }
+      card:
+        type: entities
+        title: Slot 2
+        entities:
+          - entity: switch.twix_feeder_schedule_slot_2_enabled
+            name: Enabled
+          - entity: number.twix_feeder_slot_2_hour
+            name: Hour
+          - entity: number.twix_feeder_slot_2_minute
+            name: Minute
+          - entity: number.twix_feeder_slot_2_portions
+            name: Portions
+
+    - type: custom:mod-card
+      card_mod:
+        style: |
+          ha-card {
+            {% if is_state('switch.twix_feeder_schedule_slot_3_enabled', 'on') %}
+              border: 2px solid rgba(30, 144, 255, 0.8);
+              box-shadow: 0 0 8px rgba(30, 144, 255, 0.8), 0 0 5px rgba(0,0,0,0.5);
+            {% else %}
+              border: 1px solid var(--divider-color);
+              box-shadow: none;
+            {% endif %}
+            border-radius: 12px;
+          }
+      card:
+        type: entities
+        title: Slot 3
+        entities:
+          - entity: switch.twix_feeder_schedule_slot_3_enabled
+            name: Enabled
+          - entity: number.twix_feeder_slot_3_hour
+            name: Hour
+          - entity: number.twix_feeder_slot_3_minute
+            name: Minute
+          - entity: number.twix_feeder_slot_3_portions
+            name: Portions
+
+    - type: custom:mod-card
+      card_mod:
+        style: |
+          ha-card {
+            {% if is_state('switch.twix_feeder_schedule_slot_4_enabled', 'on') %}
+              border: 2px solid rgba(30, 144, 255, 0.8);
+              box-shadow: 0 0 8px rgba(30, 144, 255, 0.8), 0 0 5px rgba(0,0,0,0.5);
+            {% else %}
+              border: 1px solid var(--divider-color);
+              box-shadow: none;
+            {% endif %}
+            border-radius: 12px;
+          }
+      card:
+        type: entities
+        title: Slot 4
+        entities:
+          - entity: switch.twix_feeder_schedule_slot_4_enabled
+            name: Enabled
+          - entity: number.twix_feeder_slot_4_hour
+            name: Hour
+          - entity: number.twix_feeder_slot_4_minute
+            name: Minute
+          - entity: number.twix_feeder_slot_4_portions
+            name: Portions
+
+    - type: custom:mushroom-title-card
+      title: 🐾 Manual Feed
+      subtitle: Set portions, then tap Dispense Now
+
+    - type: horizontal-stack
+      cards:
+        - type: custom:mushroom-entity-card
+          entity: number.twix_feeder_portions
+          name: Portions
+          icon: mdi:chart-donut
+          display_mode: buttons
+          card_mod:
+            style: |
+              ha-card {
+                background: radial-gradient(circle at top, rgba(0,255,255,0.10), rgba(0,0,0,0.65));
+                border: 2px solid rgba(0,255,255,0.25);
+                box-shadow: 0 0 6px rgba(0,255,255,0.35);
+                border-radius: 16px;
+              }
+        - type: custom:mushroom-entity-card
+          entity: button.twix_feeder_dispense_now
+          name: Dispense Now
+          icon: mdi:hand-coin
+          tap_action:
+            action: call-service
+            service: button.press
+            data:
+              entity_id: button.twix_feeder_dispense_now
+          card_mod:
+            style: |
+              ha-card {
+                background: radial-gradient(circle at top, rgba(50,205,50,0.14), rgba(0,0,0,0.65));
+                border: 2px solid rgba(50,205,50,0.35);
+                box-shadow: 0 0 8px rgba(50,205,50,0.55);
+                border-radius: 16px;
+                transition: all 0.25s ease-in-out;
+              }
+              ha-card:active {
+                box-shadow: 0 0 25px rgba(50,205,50,1);
+                transform: scale(0.98);
+              }
+
+    - type: custom:mushroom-entity-card
+      entity: select.twix_feeder_completion_tune
+      name: Completion Tune
+      icon: mdi:music
+      icon_color: blue
+
+    - type: custom:mushroom-entity-card
+      entity: sensor.twix_feeder_portions_today
+      name: Total Portions Dispensed Today
+      icon: mdi:counter
+      icon_color: pink
+      card_mod:
+        style: |
+          ha-card {
+            box-shadow: 0 0 5px rgba(255,105,180,0.5);
+            border: 1px solid rgba(255,105,180,0.5);
+            border-radius: 12px;
+          }
+
+    - type: custom:mushroom-entity-card
+      entity: sensor.twix_feeder_total_portions_dispensed
+      name: Lifetime Portions Dispensed
+      icon: mdi:database
+      icon_color: blue
+      card_mod:
+        style: |
+          ha-card {
+            box-shadow: 0 0 6px rgba(30,144,255,0.45);
+            border: 1px solid rgba(30,144,255,0.45);
+            border-radius: 12px;
+          }
+
+    - type: custom:mushroom-title-card
+      title: 📡 Status / Sensors
+      subtitle: Quick health check
+
+    - type: entities
+      entities:
+        - entity: binary_sensor.twix_feeder_twix_feeder_status
+          name: Connectivity
+        - entity: sensor.twix_feeder_device_time
+          name: Device Time
+        - entity: sensor.twix_feeder_twix_feeder_ip_address
+          name: IP Address
+        - entity: sensor.twix_feeder_twix_feeder_wifi_signal
+          name: WiFi Signal (dBm)
+        - entity: sensor.twix_feeder_twix_feeder_uptime
+          name: Uptime
+        - entity: button.twix_feeder_twix_feeder_restart
+          name: Restart Feeder
