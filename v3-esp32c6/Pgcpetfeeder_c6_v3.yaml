@@ -1,0 +1,954 @@
+substitutions:
+  device_name: twixfeeder
+  friendly_name: Twix Feeder
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  comment: "Feeder w/ display and button control"
+  on_boot:
+    - priority: -200
+      then:
+        - lambda: |-
+            id(boot_count) += 1;
+            ESP_LOGW("boot", "BOOT COUNT=%d", id(boot_count));
+    - priority: -10
+      then:
+        - delay: 2s
+        - lambda: |-
+            id(portions_number).publish_state(id(current_portions));
+            id(tune_select).publish_state(id(tune_names)[id(current_tune_index)]);
+            id(lifetime_portions).publish_state(id(lifetime_portions_int));
+
+esp32:
+  board: seeed_xiao_esp32c6
+  framework:
+    type: esp-idf
+
+logger:
+  level: INFO
+
+preferences:
+  flash_write_interval: 10s
+
+api:
+ 
+
+  reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+
+
+web_server:
+  port: 80
+  version: 3
+  css_url: "https://pricklyguy.github.io/pgc-esphome-ui/prickly_overrides.css?v=1.0.4"
+  js_url:  "https://pricklyguy.github.io/pgc-esphome-ui/prickly_loader.js?v=1.0.4"
+  sorting_groups:
+    - id: main
+      name: "Setup and Control"
+      sorting_weight: 10
+    - id: slot1
+      name: "Schedule Slot 1"
+      sorting_weight: 20
+    - id: slot2
+      name: "Schedule Slot 2"
+      sorting_weight: 21
+    - id: slot3
+      name: "Schedule Slot 3"
+      sorting_weight: 22
+    - id: slot4
+      name: "Schedule Slot 4"
+      sorting_weight: 23
+    - id: telemetry
+      name: "Status / Sensors"
+      sorting_weight: 30
+
+wifi:
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+      manual_ip:
+        static_ip: 10.10.1.233
+        gateway: 10.10.1.1
+        subnet: 255.255.255.0
+        dns1: 10.10.1.1        
+    - ssid: !secret hotspot_ssid
+      password: !secret hotspot_password
+  ap:
+    ssid: "${device_name}-fallback"
+    password: !secret ap_password
+  power_save_mode: none
+  fast_connect: true
+  reboot_timeout: 0s
+
+captive_portal:
+
+time:
+  - platform: sntp
+    id: device_time
+    timezone: "America/Phoenix"
+    servers:
+      - 0.pool.ntp.org
+      - 1.pool.ntp.org
+
+# ────────────────────────────────
+# I2C / OLED
+# ────────────────────────────────
+i2c:
+  sda: D4
+  scl: D5
+
+font:
+  - file: "gfonts://Roboto"
+    id: f1
+    size: 18
+  - file: "gfonts://Roboto"
+    id: f2
+    size: 14
+
+display:
+  - platform: ssd1306_i2c
+    model: "SSD1306 128x32"
+    address: 0x3C
+    lambda: |-
+      bool edit_tune = id(edit_mode);
+      it.printf(0,0,id(f1),"%sPortions: %d",
+        edit_tune ? " " : ">",
+        id(current_portions));
+      it.printf(0,18,id(f2),"%s%s",
+        edit_tune ? ">" : " ",
+        id(tune_names)[id(current_tune_index)].c_str());
+
+# ────────────────────────────────
+# OUTPUTS
+# ────────────────────────────────
+output:
+  - platform: ledc
+    id: motor_pwm
+    pin: D0
+    frequency: 1000Hz
+  - platform: ledc
+    id: buzzer
+    pin: D2
+
+# ────────────────────────────────
+# SWITCHES
+# ────────────────────────────────
+switch:
+  - platform: output
+    id: motor
+    output: motor_pwm
+    internal: true
+
+  - platform: gpio
+    id: led_green
+    pin: D3
+    restore_mode: ALWAYS_ON
+
+  - platform: gpio
+    id: led_red
+    pin: D10
+    restore_mode: ALWAYS_OFF
+
+  - platform: template
+    id: slot1_en_switch
+    name: "Schedule Slot 1 Enabled"
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    lambda: return id(slot1_en);
+    turn_on_action:
+      - lambda: id(slot1_en) = true;
+    turn_off_action:
+      - lambda: id(slot1_en) = false;
+    web_server:
+      sorting_group_id: slot1
+      sorting_weight: 1
+
+  - platform: template
+    id: slot2_en_switch
+    name: "Schedule Slot 2 Enabled"
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    lambda: return id(slot2_en);
+    turn_on_action:
+      - lambda: id(slot2_en) = true;
+    turn_off_action:
+      - lambda: id(slot2_en) = false;
+    web_server:
+      sorting_group_id: slot2
+      sorting_weight: 1
+
+  - platform: template
+    id: slot3_en_switch
+    name: "Schedule Slot 3 Enabled"
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    lambda: return id(slot3_en);
+    turn_on_action:
+      - lambda: id(slot3_en) = true;
+    turn_off_action:
+      - lambda: id(slot3_en) = false;
+    web_server:
+      sorting_group_id: slot3
+      sorting_weight: 1
+
+  - platform: template
+    id: slot4_en_switch
+    name: "Schedule Slot 4 Enabled"
+    restore_mode: RESTORE_DEFAULT_ON
+    optimistic: true
+    lambda: return id(slot4_en);
+    turn_on_action:
+      - lambda: id(slot4_en) = true;
+    turn_off_action:
+      - lambda: id(slot4_en) = false;
+    web_server:
+      sorting_group_id: slot4
+      sorting_weight: 1
+
+# ────────────────────────────────
+# BUZZER / RTTTL
+# ────────────────────────────────
+rtttl:
+  output: buzzer
+  id: rtttl_player
+  on_finished_playback:
+    then:
+      - output.turn_off: buzzer
+
+# ────────────────────────────────
+# TEXT SENSORS
+# ────────────────────────────────
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "${friendly_name} IP Address"
+      web_server:
+        sorting_group_id: telemetry
+        sorting_weight: 1
+    mac_address:
+      name: "${friendly_name} MAC Address"
+      web_server:
+        sorting_group_id: telemetry
+        sorting_weight: 2
+
+  - platform: template
+    name: "Device Time"
+    lambda: |-
+      auto t = id(device_time).now();
+      if (!t.is_valid()) return {"--:--:--"};
+      char buf[16];
+      snprintf(buf, sizeof(buf), "%02d:%02d:%02d", t.hour, t.minute, t.second);
+      return {buf};
+    update_interval: 30s
+    internal: true
+    web_server:
+      sorting_group_id: telemetry
+      sorting_weight: 3
+
+# ────────────────────────────────
+# SENSORS
+# ────────────────────────────────
+sensor:
+  - platform: template
+    name: "Boot Count"
+    accuracy_decimals: 0
+    update_interval: 60s
+    lambda: return (float) id(boot_count);
+    web_server:
+      sorting_group_id: telemetry
+      sorting_weight: 4.9
+
+  - platform: template
+    id: lifetime_portions
+    name: "Total Portions Dispensed"
+    unit_of_measurement: "portions"
+    accuracy_decimals: 0
+    update_interval: never
+    lambda: return (float) id(lifetime_portions_int);
+    web_server:
+      sorting_group_id: telemetry
+      sorting_weight: 5
+
+  - platform: uptime
+    name: "${friendly_name} Uptime"
+    web_server:
+      sorting_group_id: telemetry
+      sorting_weight: 6
+
+  - platform: wifi_signal
+    name: "${friendly_name} WiFi Signal"
+    update_interval: 60s
+    web_server:
+      sorting_group_id: telemetry
+      sorting_weight: 7
+
+  - platform: template
+    name: "Portions Today"
+    lambda: return id(portions_today);
+    web_server:
+      sorting_group_id: main
+      sorting_weight: 4
+
+# ────────────────────────────────
+# BINARY SENSORS
+# ────────────────────────────────
+binary_sensor:
+  - platform: gpio
+    id: btn_lock
+    pin:
+      number: D6
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      - delayed_on: 50ms
+    internal: true
+    on_press:
+      then:
+        - lambda: id(edit_mode) = !id(edit_mode);
+        - script.execute: beep_short
+
+  - platform: gpio
+    id: btn_up
+    pin:
+      number: D7
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      - delayed_on: 50ms
+    internal: true
+    on_press:
+      then:
+        - lambda: |-
+            if (!id(edit_mode)) {
+              if (id(current_portions) < 10) id(current_portions)++;
+              id(portions_number).publish_state(id(current_portions));
+            } else {
+              id(current_tune_index) = (id(current_tune_index) + 1) % 22;
+              id(tune_select).publish_state(id(tune_names)[id(current_tune_index)]);
+            }
+
+  - platform: gpio
+    id: btn_down
+    pin:
+      number: D8
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      - delayed_on: 50ms
+    internal: true
+    on_press:
+      then:
+        - lambda: |-
+            if (!id(edit_mode)) {
+              if (id(current_portions) > 1) id(current_portions)--;
+              id(portions_number).publish_state(id(current_portions));
+            } else {
+              id(current_tune_index) = (id(current_tune_index) + 21) % 22;
+              id(tune_select).publish_state(id(tune_names)[id(current_tune_index)]);
+            }
+
+  - platform: gpio
+    id: btn_set
+    pin:
+      number: D9
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      - delayed_on: 50ms
+    internal: true
+    on_press:
+      then:
+        - script.execute: dispense
+
+  # Low food sensor — not present on this hardware revision, re-enable when equipped
+  # - platform: gpio
+  #   id: "low_food"
+  #   name: Low Food
+  #   pin:
+  #     number: GPIO6
+  #     mode: INPUT_PULLUP
+  #     inverted: false
+  #   device_class: problem
+  #   filters:
+  #     - delayed_on: 3s
+  #     - delayed_off: 10s
+  #   web_server:
+  #     sorting_group_id: main
+  #     sorting_weight: 5
+
+  - platform: status
+    name: "${friendly_name} Status"
+    id: ${device_name}_status
+    web_server:
+      sorting_group_id: telemetry
+      sorting_weight: 8
+
+  - platform: gpio
+    id: feed_microswitch
+    internal: true
+    pin:
+      number: D1
+      mode: INPUT_PULLUP
+      inverted: true
+    filters:
+      - delayed_on: 30ms
+      - delayed_off: 30ms
+    on_press:
+      then:
+        - lambda: |-
+            const uint32_t now = millis();
+            if (now - id(last_pulse_ms) < id(pulse_lockout_ms)) return;
+            id(last_pulse_ms) = now;
+            id(lifetime_portions_int) += 1;
+            id(lifetime_portions).publish_state(id(lifetime_portions_int));
+
+# ────────────────────────────────
+# GLOBALS
+# ────────────────────────────────
+globals:
+  - id: boot_count
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: current_portions
+    type: int
+    restore_value: yes
+    initial_value: '3'
+  - id: current_tune_index
+    type: int
+    restore_value: yes
+    initial_value: '18'
+  - id: edit_mode
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: portions_today
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: feed_start
+    type: int
+    restore_value: no
+    initial_value: '0'
+  - id: tune_names
+    type: std::vector<std::string>
+    # Index reference:
+    #  0  Adams Family     6  Halloween       12  Mission Imp      18  Star Wars
+    #  1  Batman           7  Happy Birthday  13  Pacman           19  Super Man
+    #  2  Bev Cop          8  Indiana Jones   14  Pink Panther     20  The A Team
+    #  3  Final Countdown  9  Jeopardy        15  Popeye           21  Double Beep (error)
+    #  4  Flintstones     10  Knight Rider    16  The Simpsons
+    #  5  Funky Town      11  Looney Tunes    17  Smoke on the Water
+    initial_value: '{"Adams Family","Batman","Bev Cop","Final Countdown","Flintstones","Funky Town","Halloween","Happy Birthday","Indiana Jones","Jeopardy","Knight Rider","Looney Tunes","Mission Imp","Pacman","Pink Panther","Popeye","The Simpsons","Smoke on the Water","Star Wars","Super Man","The A Team","Double Beep"}'
+
+  - id: slot1_en
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
+  - id: slot2_en
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
+  - id: slot3_en
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
+  - id: slot4_en
+    type: bool
+    restore_value: yes
+    initial_value: 'true'
+
+  - id: slot1_h
+    type: int
+    restore_value: yes
+    initial_value: '7'
+  - id: slot1_m
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: slot1_p
+    type: int
+    restore_value: yes
+    initial_value: '3'
+
+  - id: slot2_h
+    type: int
+    restore_value: yes
+    initial_value: '12'
+  - id: slot2_m
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: slot2_p
+    type: int
+    restore_value: yes
+    initial_value: '3'
+
+  - id: slot3_h
+    type: int
+    restore_value: yes
+    initial_value: '17'
+  - id: slot3_m
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: slot3_p
+    type: int
+    restore_value: yes
+    initial_value: '3'
+
+  - id: slot4_h
+    type: int
+    restore_value: yes
+    initial_value: '21'
+  - id: slot4_m
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: slot4_p
+    type: int
+    restore_value: yes
+    initial_value: '2'
+
+  - id: slot1_ran
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: slot2_ran
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: slot3_ran
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: slot4_ran
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+  - id: lifetime_portions_int
+    type: int
+    restore_value: yes
+    initial_value: '0'
+
+  - id: last_pulse_ms
+    type: uint32_t
+    restore_value: no
+    initial_value: '0'
+
+  - id: pulse_lockout_ms
+    type: uint32_t
+    restore_value: yes
+    initial_value: '800'
+
+# ────────────────────────────────
+# NUMBERS
+# ────────────────────────────────
+number:
+  - platform: template
+    name: "Portions"
+    id: portions_number
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: box
+    lambda: return id(current_portions);
+    set_action:
+      - lambda: |-
+          int v = (int) x;
+          if (v < 1) v = 1;
+          if (v > 10) v = 10;
+          id(current_portions) = v;
+          id(portions_number).publish_state(v);
+    web_server:
+      sorting_group_id: main
+      sorting_weight: 1
+
+  # ── Slot 1 ──
+  - platform: template
+    name: "Slot 1 Hour"
+    min_value: 0
+    max_value: 23
+    step: 1
+    mode: box
+    lambda: return id(slot1_h);
+    set_action:
+      - lambda: id(slot1_h) = (int)x;
+    web_server:
+      sorting_group_id: slot1
+      sorting_weight: 2
+
+  - platform: template
+    name: "Slot 1 Minute"
+    min_value: 0
+    max_value: 59
+    step: 1
+    mode: box
+    lambda: return id(slot1_m);
+    set_action:
+      - lambda: id(slot1_m) = (int)x;
+    web_server:
+      sorting_group_id: slot1
+      sorting_weight: 3
+
+  - platform: template
+    name: "Slot 1 Portions"
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: box
+    lambda: return id(slot1_p);
+    set_action:
+      - lambda: |-
+          int v = (int)x;
+          if (v < 1) v = 1;
+          if (v > 10) v = 10;
+          id(slot1_p) = v;
+    web_server:
+      sorting_group_id: slot1
+      sorting_weight: 4
+
+  # ── Slot 2 ──
+  - platform: template
+    name: "Slot 2 Hour"
+    min_value: 0
+    max_value: 23
+    step: 1
+    mode: box
+    lambda: return id(slot2_h);
+    set_action:
+      - lambda: id(slot2_h) = (int)x;
+    web_server:
+      sorting_group_id: slot2
+      sorting_weight: 2
+
+  - platform: template
+    name: "Slot 2 Minute"
+    min_value: 0
+    max_value: 59
+    step: 1
+    mode: box
+    lambda: return id(slot2_m);
+    set_action:
+      - lambda: id(slot2_m) = (int)x;
+    web_server:
+      sorting_group_id: slot2
+      sorting_weight: 3
+
+  - platform: template
+    name: "Slot 2 Portions"
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: box
+    lambda: return id(slot2_p);
+    set_action:
+      - lambda: |-
+          int v = (int)x;
+          if (v < 1) v = 1;
+          if (v > 10) v = 10;
+          id(slot2_p) = v;
+    web_server:
+      sorting_group_id: slot2
+      sorting_weight: 4
+
+  # ── Slot 3 ──
+  - platform: template
+    name: "Slot 3 Hour"
+    min_value: 0
+    max_value: 23
+    step: 1
+    mode: box
+    lambda: return id(slot3_h);
+    set_action:
+      - lambda: id(slot3_h) = (int)x;
+    web_server:
+      sorting_group_id: slot3
+      sorting_weight: 2
+
+  - platform: template
+    name: "Slot 3 Minute"
+    min_value: 0
+    max_value: 59
+    step: 1
+    mode: box
+    lambda: return id(slot3_m);
+    set_action:
+      - lambda: id(slot3_m) = (int)x;
+    web_server:
+      sorting_group_id: slot3
+      sorting_weight: 3
+
+  - platform: template
+    name: "Slot 3 Portions"
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: box
+    lambda: return id(slot3_p);
+    set_action:
+      - lambda: |-
+          int v = (int)x;
+          if (v < 1) v = 1;
+          if (v > 10) v = 10;
+          id(slot3_p) = v;
+    web_server:
+      sorting_group_id: slot3
+      sorting_weight: 4
+
+  # ── Slot 4 ──
+  - platform: template
+    name: "Slot 4 Hour"
+    min_value: 0
+    max_value: 23
+    step: 1
+    mode: box
+    lambda: return id(slot4_h);
+    set_action:
+      - lambda: id(slot4_h) = (int)x;
+    web_server:
+      sorting_group_id: slot4
+      sorting_weight: 2
+
+  - platform: template
+    name: "Slot 4 Minute"
+    min_value: 0
+    max_value: 59
+    step: 1
+    mode: box
+    lambda: return id(slot4_m);
+    set_action:
+      - lambda: id(slot4_m) = (int)x;
+    web_server:
+      sorting_group_id: slot4
+      sorting_weight: 3
+
+  - platform: template
+    name: "Slot 4 Portions"
+    min_value: 1
+    max_value: 10
+    step: 1
+    mode: box
+    lambda: return id(slot4_p);
+    set_action:
+      - lambda: |-
+          int v = (int)x;
+          if (v < 1) v = 1;
+          if (v > 10) v = 10;
+          id(slot4_p) = v;
+    web_server:
+      sorting_group_id: slot4
+      sorting_weight: 4
+
+# ────────────────────────────────
+# SELECT
+# ────────────────────────────────
+select:
+  - platform: template
+    name: Completion Tune
+    id: tune_select
+    optimistic: true
+    options:
+      - "Adams Family"
+      - "Batman"
+      - "Bev Cop"
+      - "Final Countdown"
+      - "Flintstones"
+      - "Funky Town"
+      - "Halloween"
+      - "Happy Birthday"
+      - "Indiana Jones"
+      - "Jeopardy"
+      - "Knight Rider"
+      - "Looney Tunes"
+      - "Mission Imp"
+      - "Pacman"
+      - "Pink Panther"
+      - "Popeye"
+      - "The Simpsons"
+      - "Smoke on the Water"
+      - "Star Wars"
+      - "Super Man"
+      - "The A Team"
+      - "Double Beep"
+    initial_option: "Star Wars"
+    set_action:
+      lambda: |-
+        auto &names = id(tune_names);
+        for (int i = 0; i < (int)names.size(); i++) {
+          if (x == names[i]) {
+            id(current_tune_index) = i;
+            break;
+          }
+        }
+        id(tune_select).publish_state(x);
+    web_server:
+      sorting_group_id: main
+      sorting_weight: 2
+
+# ────────────────────────────────
+# BUTTONS
+# ────────────────────────────────
+button:
+  - platform: template
+    name: Dispense Now
+    id: dispense_btn
+    on_press:
+      - script.execute: dispense
+    web_server:
+      sorting_group_id: main
+      sorting_weight: 3
+
+  - platform: restart
+    name: "${friendly_name} Restart"
+    web_server:
+      sorting_group_id: telemetry
+      sorting_weight: 9
+
+# ────────────────────────────────
+# SCRIPTS
+# ────────────────────────────────
+script:
+  - id: beep_short
+    then:
+      - rtttl.play: "beep:d=4,o=5,b=100:16c6"
+
+  - id: error_blink_red
+    mode: restart
+    then:
+      - repeat:
+          count: 8
+          then:
+            - switch.toggle: led_red
+            - delay: 200ms
+      - switch.turn_off: led_red
+
+  - id: play_tune
+    parameters:
+      tune_idx: int
+    then:
+      - lambda: |-
+          // 0: Adams Family
+          if (tune_idx == 0) {
+            id(rtttl_player).play("AdamsFamily:d=8,o=5,b=160:c,4f,a,4f,c,4b4,2g,f,4e,g,4e,g4,4c,2f,c,4f,a,4f,c,4b4,2g,f,4e,c,4d,e,1f,c,d,e,f,1p,d,e,f#,g,1p,d,e,f#,g,4p,d,e,f#,g,4p,c,d,e,f");
+          } else if (tune_idx == 1) {
+            id(rtttl_player).play("Batman:d=8,o=5,b=180:d,d,c#,c#,c,c,c#,c#,d,d,c#,c#,c,c,c#,c#,d,d#,c,c#,c,c,c#,c#,f,p,4f");
+          } else if (tune_idx == 2) {
+            id(rtttl_player).play("BevCop:d=8,o=5,b=125:16g,16g,a#.,16g,16p,16g,c6,g,f,4g,d6.,16g,16p,16g,d#6,d6,a#,g,d6,g6,16g,16f,16p,16f,d,a#,2g,4p,16f6,d6,c6,a#,4g,a#.,16g,16p,16g,c6,g,f,4g,d6.,16g,16p,16g,d#6,d6,a#,g,d6,g6,16g,16f,16p,16f,d,a#,2g");
+          } else if (tune_idx == 3) {
+            id(rtttl_player).play("FinalCtdn:d=16,o=5,b=125:b,a,4b,4e,4p,8p,c6,b,8c6,8b,4a,4p,8p,c6,b,4c6,4e,4p,8p,a,g,8a,8g,8f#,8a,4g.,f#,g,4a.,g,a,8b,8a,8g,8f#,4e,4c6,2b.,b,c6,b,a,1b");
+          } else if (tune_idx == 4) {
+            id(rtttl_player).play("Flintstones:d=4,o=5,b=200:g#,c#,8p,c#6,8a#,g#,c#,8p,g#,8f#,8f,8f,8f#,8g#,c#,d#,2f,2p,g#,c#,8p,c#6,8a#,g#,c#,8p,g#,8f#,8f,8f,8f#,8g#,c#,d#,2c#");
+          } else if (tune_idx == 5) {
+            id(rtttl_player).play("FunkyTown:d=8,o=4,b=125:c6,c6,a#5,c6,p,g5,p,g5,c6,f6,e6,c6,2p,c6,c6,a#5,c6,p,g5,p,g5,c6,f6,e6,c6");
+          } else if (tune_idx == 6) {
+            id(rtttl_player).play("Halloween:d=8,o=5,b=180:d6,g,g,d6,g,g,d6,g,d#6,g,d6,g,g,d6,g,g,d6,g,d#6,g,c#6,f#,f#,c#6,f#,f#,c#6,f#,d6,f#,c#6,f#,f#,c#6,f#,f#,c#6,f#,d6,f#");
+          } else if (tune_idx == 7) {
+            id(rtttl_player).play("HappyBday:d=4,o=5,b=100:8g,8g,a,g,c6,2b,8g,8g,a,g,d6,2c6,8g,8g,g6,e6,c6,b,a,8f6,8f6,e6,c6,d6,2c6");
+          } else if (tune_idx == 8) {
+            id(rtttl_player).play("Indiana:d=4,o=5,b=250:e,8p,8f,8g,8p,1c6,8p.,d,8p,8e,1f,p.,g,8p,8a,8b,8p,1f6,p,a,8p,8b,2c6,2d6,2e6,e,8p,8f,8g,8p,1c6,p,d6,8p,8e6,1f6,g,8p,8g,e6,8p,8d6,8p,8g,e6,8p,8d6,8p,8g,f6,8p,8e6,8p,8d6,2c6");
+          } else if (tune_idx == 9) {
+            id(rtttl_player).play("Jeopardy:d=4,o=6,b=125:c,f,c,f5,c,f,2c,c,f,c,f,a.,8g,8f,8e,8d,8c#,c,f,c,f5,c,f,2c,f,8c,c5,8c,2c");
+          } else if (tune_idx == 10) {
+            id(rtttl_player).play("KnightRdr:d=32,o=5,b=63:16e,f,e,8b,16e6,f6,e6,8b,16e,f,e,16b,16e6,4d6");
+          } else if (tune_idx == 11) {
+            id(rtttl_player).play("Looney:d=4,o=5,b=140:32p,c6,8f6,8e6,8d6,8c6,a.,8c6,8f6,8e6,8d6,8d#6,e.6,8e6,8e6,8c6,8d6,8c6,8e6,8c6,8d6,8a,8c6,8g,8a#,8a,8f");
+          } else if (tune_idx == 12) {
+            id(rtttl_player).play("MissionImp:d=16,o=6,b=95:32d,32d#,32d,32d#,32d,32d#,32d,32d#,32d,32d,32d#,32e,32f,32f#,32g,g,8p,g,8p,a#,p,c7,p,g,8p,g,8p,f,p,f#,p,g");
+          } else if (tune_idx == 13) {
+            id(rtttl_player).play("Pacman:d=4,o=5,b=112:32b,32p,32b6,32p,32f#6,32p,32d#6,32p,32b6,32f#6,16p,16d#6,16p,32c6,32p,32c7,32p,32g6,32p,32e6,32p,32c7,32g6,16p,16e6,16p,32b,32p,32b6,32p,32f#6,32p,32d#6,32p,32b6,32f#6,16p,16d#6,16p,32d#6,32e6,32f6,32p,32f6,32f#6,32g6,32p,32g6,32g#6,32a6,32p,32b6");
+          } else if (tune_idx == 14) {
+            id(rtttl_player).play("PinkPanther:d=4,o=5,b=160:8d#,8e,2p,8f#,8g,2p,8d#,8e,16p,8f#,8g,16p,8c6,8b,16p,8d#,8e,16p,8b,2a#,2p,16a,16g,16e,16d,2e");
+          } else if (tune_idx == 15) {
+            id(rtttl_player).play("Popeye:d=8,o=6,b=160:a5,c,c,c,4a#5,a5,4c,2p,c,d,a#5,d,4f,d,2c,p,c,d,a#5,d,f,e,d,c,d,c,a5,f5,a5,c,d,c,4a#5,g5,2f5");
+          } else if (tune_idx == 16) {
+            id(rtttl_player).play("Simpsons:d=4,o=5,b=160:c6,e6,f#6,8a6,g6,e6,c6,8a,8f#,8f#,8f#,2g,8p,8p,8f#,8f#,8f#,8g,a#,8c6,8c6,8c6,c6");
+          } else if (tune_idx == 17) {
+            id(rtttl_player).play("SmokeWater:d=4,o=4,b=112:c,d#,f.,c,d#,8f#,f,p,c,d#,f.,d#,c,2p,8p,c,d#,f.,c,d#,8f#,f,p,c,d#,f.,d#,c");
+          } else if (tune_idx == 18) {
+            id(rtttl_player).play("StarWars:d=8,o=6,b=180:f5,f5,f5,2a#5.,2f.,d#,d,c,2a#.,4f.,d#,d,c,2a#.,4f.,d#,d,d#,2c");
+          } else if (tune_idx == 19) {
+            id(rtttl_player).play("SuperMan:d=8,o=6,b=180:g5,g5,g5,4c,c,2g,p,g,a.,16g,f,1g,p,g5,g5,g5,4c,c,2g,p,g,a.,16g,f,a,2g.,4p,c,c,c,2b.,4g.,c,c,c,2b.,4g.,c,c,c,b,a,b,2c7,c,c,c,c,c,2c.");
+          } else if (tune_idx == 20) {
+            id(rtttl_player).play("ATeam:d=8,o=5,b=132:4d#6,a#,2d#6,16p,g#,4a#,4d#.,p,16g,16a#,d#6,a#,f6,2d#6,16p,c#6.,16c6,16a#,g#.,2a#.");
+          } else {
+            id(rtttl_player).play("complete:d=4,o=5,b=200:8c6,8p,8c6");
+          }
+
+  - id: dispense
+    mode: restart
+    then:
+      - script.execute: beep_short
+      - lambda: id(feed_start) = id(lifetime_portions_int);
+      - switch.turn_on: led_red
+      - switch.turn_off: led_green
+      - switch.turn_on: motor
+      - wait_until:
+          condition:
+            lambda: |-
+              int now_total = id(lifetime_portions_int);
+              return (now_total - id(feed_start)) >= id(current_portions);
+          timeout: 16s
+      - switch.turn_off: motor
+      - switch.turn_off: led_red
+      - switch.turn_on: led_green
+      - if:
+          condition:
+            lambda: |-
+              int moved = id(lifetime_portions_int) - id(feed_start);
+              return moved >= id(current_portions);
+          then:
+            - lambda: |-
+                int moved = id(lifetime_portions_int) - id(feed_start);
+                id(portions_today) += moved;
+                id(lifetime_portions).publish_state(id(lifetime_portions_int));
+            - script.execute:
+                id: play_tune
+                tune_idx: !lambda 'return id(current_tune_index);'
+          else:
+            - script.execute: error_blink_red
+            - script.execute:
+                id: play_tune
+                tune_idx: 21  # Double Beep error tone
+
+# ────────────────────────────────
+# INTERVALS
+# ────────────────────────────────
+interval:
+  - interval: 10s
+    then:
+      - lambda: |-
+          auto t = id(device_time).now();
+          if (!t.is_valid()) return;
+          if (t.hour == 0 && t.minute == 0 && t.second < 10) {
+            id(portions_today) = 0;
+            id(slot1_ran) = false;
+            id(slot2_ran) = false;
+            id(slot3_ran) = false;
+            id(slot4_ran) = false;
+          }
+      - lambda: |-
+          auto t = id(device_time).now();
+          if (!t.is_valid()) return;
+          auto run_slot = [&](bool en, int h, int m, int p, bool &ran_flag, int slot_num) {
+            if (!en) return;
+            if (ran_flag) return;
+            if (t.hour != h || t.minute != m) return;
+            int portions = p;
+            if (portions < 1) portions = 1;
+            if (portions > 10) portions = 10;
+            id(current_portions) = portions;
+            id(portions_number).publish_state(portions);
+            ESP_LOGI("schedule", "Running slot %d at %02d:%02d for %d portions",
+                     slot_num, h, m, portions);
+            ran_flag = true;
+            id(dispense).execute();
+          };
+          run_slot(id(slot1_en), id(slot1_h), id(slot1_m), id(slot1_p), id(slot1_ran), 1);
+          run_slot(id(slot2_en), id(slot2_h), id(slot2_m), id(slot2_p), id(slot2_ran), 2);
+          run_slot(id(slot3_en), id(slot3_h), id(slot3_m), id(slot3_p), id(slot3_ran), 3);
+          run_slot(id(slot4_en), id(slot4_h), id(slot4_m), id(slot4_p), id(slot4_ran), 4);
